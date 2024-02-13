@@ -98,11 +98,12 @@ tweets <- tweets %>%
 ```
 
 ```{r, echo = F}
+#此代码将生成一个样式表，显示按创建日期排序的最后 5 条推文
 tweets %>% 
-  arrange(created_at) %>%
-  tail(5) %>%
-  kbl() %>%
-  kable_styling(c("striped", "hover", "condensed", "responsive"))
+  arrange(created_at) %>%  #sorts the data frame by the created_at column
+  tail(5) %>%  #selects the last 5 rows of the data frame
+  kbl() %>%  #sorts the data frame by the created_at column.
+  kable_styling(c("striped", "hover", "condensed", "responsive"))  #applies styling to the table, including striping, hover effects, condensed layout, and responsiveness
 ```
 
 We manipulate the data into tidy format again, unnesting each token (here: words) from the tweet text. 
@@ -149,12 +150,12 @@ Let's see how we might filter the texts by selecting a dictionary, or subset of 
 
 ```{r}
 
-nrc_fear <- get_sentiments("nrc") %>% 
-  filter(sentiment == "fear")
+nrc_fear <- get_sentiments("nrc") %>%  #此函数检索NRC情绪词典，其中包含与不同情绪相关的单词，包括“恐惧”。
+  filter(sentiment == "fear")  #仅选择情绪为“恐惧”的行
 
-tidy_tweets %>%
-  inner_join(nrc_fear) %>%
-  count(word, sort = TRUE)
+tidy_tweets %>% 
+  inner_join(nrc_fear) %>%  #将您的 tidy_tweets 数据框与 nrc_fear 数据框一起通过管道传输到函数中 inner_join() 。它根据匹配的单词连接两个数据框。
+  count(word, sort = TRUE)  #此函数对连接数据框中每个单词的出现次数进行计数，并根据计数按降序对结果进行排序。
 
 ```
 
@@ -166,12 +167,12 @@ Do we see any time trends? First let's make sure the data are properly arranged 
 
 ```{r}
 #gen data variable, order and format date
-tidy_tweets$date <- as.Date(tidy_tweets$created_at)
+tidy_tweets$date <- as.Date(tidy_tweets$created_at)  #通过添加一个名为data的新列来修改数据 tidy_tweets 框，将该 created_at 列转换为 Date 格式并将其分配给 date
 
-tidy_tweets <- tidy_tweets %>%
-  arrange(date)
+tidy_tweets <- tidy_tweets %>%  
+  arrange(date)  #按升序排列 tidy_tweets的data 列 
 
-tidy_tweets$order <- 1:nrow(tidy_tweets)
+tidy_tweets$order <- 1:nrow(tidy_tweets)  #添加一个名为 order 的新列，该列为排序数据框的每一行分配一个顺序号
 
 ```
 
@@ -185,15 +186,16 @@ We then calculate the sentiment scores for each of our sentiment types (positive
 
 ```{r}
 #get tweet sentiment by date
+#使用 NRC 情绪词典对 tidy_tweets 数据框执行情绪分析。它计算按日期和每 1000 行顺序聚合的情绪分数。
 tweets_nrc_sentiment <- tidy_tweets %>%
-  inner_join(get_sentiments("nrc")) %>%
-  count(date, index = order %/% 1000, sentiment) %>%
-  spread(sentiment, n, fill = 0) %>%
-  mutate(sentiment = positive - negative)
+  inner_join(get_sentiments("nrc")) %>%  #会根据 tidy_tweets 匹配的单词将您的数据框与 NRC 情感词典联接
+  count(date, index = order %/% 1000, sentiment) %>% #计算每个日期和每个第 1000 行顺序的每个情绪（例如，正、负）的出现次数。
+  spread(sentiment, n, fill = 0) %>%  #将情绪计数分散到每种情绪类型的单独列中，并用 0 填充任何缺失值
+  mutate(sentiment = positive - negative)  #通过从积极情绪的计数中减去负面情绪的计数来计算情绪分数。
 
 tweets_nrc_sentiment %>%
-  ggplot(aes(date, sentiment)) +
-  geom_point(alpha=0.5) +
+  ggplot(aes(date, sentiment)) +  #创建一段时间内情绪得分的散点图，点表示每个日期的情绪得分，平滑线显示使用黄土方法的趋势。（LOESS结合了线性最小二乘回归的简单性和非线性回归的灵活性。它通过将简单模型拟合到数据的局部子集来构建一个函数来逐点描述数据变化的确定性部分来实现这一点。）
+  geom_point(alpha=0.5) +  
   geom_smooth(method= loess, alpha=0.25)
 
 ```
@@ -225,7 +227,7 @@ tidy_tweets %>%
 tidy_tweets %>%
   inner_join(get_sentiments("afinn")) %>%
   group_by(date, index = order %/% 1000) %>% 
-  summarise(sentiment = sum(value)) %>% 
+  summarise(sentiment = sum(value)) %>%  #这将计算每个组的总情绪分数，并汇总 AFINN 值。
   ggplot(aes(date, sentiment)) +
   geom_point(alpha=0.5) +
   geom_smooth(method= loess, alpha=0.25) +
@@ -245,9 +247,9 @@ A very minimal example would choose, for example, words like "death" and its syn
 ```{r}
 
 word <- c('death', 'illness', 'hospital', 'life', 'health',
-             'fatality', 'morbidity', 'deadly', 'dead', 'victim')
-value <- c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
-mordict <- data.frame(word, value)
+             'fatality', 'morbidity', 'deadly', 'dead', 'victim')  #创建一个包含与发病率、死亡率和健康问题相关的单词的向量。
+value <- c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)  #创建一个包含每个单词的相应值的向量。在这种情况下，所有值都设置为 1。
+mordict <- data.frame(word, value)  #创建一个通过组合 word 和 value 向量命名 mordict 的数据框。数据框的每一行表示一个单词及其值
 mordict
 
 ```
@@ -257,10 +259,10 @@ We could then use the same technique as above to bind these with our data and lo
 ```{r}
 tidy_tweets %>%
   inner_join(mordict) %>%
-  group_by(date, index = order %/% 1000) %>% 
+  group_by(date, index = order %/% 1000) %>%   #绑定
   summarise(morwords = sum(value)) %>% 
-  ggplot(aes(date, morwords)) +
-  geom_bar(stat= "identity") +
+  ggplot(aes(date, morwords)) +  #创建一个随时间推移的死亡词频率的条形图，每个条形表示每个日期这些词的总频率
+  geom_bar(stat= "identity") +  #希望确保绘制的数据已表示每个条形的计数或高度。 
   ylab("mortality words")
 ```
 
@@ -273,24 +275,25 @@ An alternative, and preferable, method here would simply take a character string
 After this, we join with our data frame of total words for each date. Note that here we are using `full_join()` as we want to include dates that appear in the "totals" data frame that do not appear when we filter for mortality words; i.e., days when mortality words are equal to 0. We then go about plotting as before.
 
 ```{r}
+#包含死亡率相关词的推文百分比如何随时间变化
 mordict <- c('death', 'illness', 'hospital', 'life', 'health',
              'fatality', 'morbidity', 'deadly', 'dead', 'victim')
 
 #get total tweets per day (no missing dates so no date completion required)
 totals <- tidy_tweets %>%
-  mutate(obs=1) %>%
+  mutate(obs=1) %>%  #此行添加一个名为 obs 数据框的新列，并为每行分配一个常量值 1
   group_by(date) %>%
-  summarise(sum_words = sum(obs))
+  summarise(sum_words = sum(obs))  #通过计算每个日期的观测次数 （ obs ） 来计算每天的推文总数
 
 #plot
 tidy_tweets %>%
   mutate(obs=1) %>%
-  filter(grepl(paste0(mordict, collapse = "|"),word, ignore.case = T)) %>%
+  filter(grepl(paste0(mordict, collapse = "|"),word, ignore.case = T)) %>%  #过滤 tidy_tweets 数据框，使其仅包含word列包含mordict向量中任何单词的行，而忽略区分大小写。
   group_by(date) %>%
   summarise(sum_mwords = sum(obs)) %>%
-  full_join(totals, word, by="date") %>%
+  full_join(totals, word, by="date") %>% #这将在筛选的数据帧和基于日期列的汇总数据帧之间执行完全连接。这确保了所有日期都被包括在内，即使这些日期上没有包含与死亡相关的单词的推文。
   mutate(sum_mwords= ifelse(is.na(sum_mwords), 0, sum_mwords),
-         pctmwords = sum_mwords/sum_words) %>%
+         pctmwords = sum_mwords/sum_words) %>%  #计算包含与死亡率相关的单词 （ pctmwords ） 的推文的百分比，并通过将其设置为 0 来处理存在缺失值的情况。
   ggplot(aes(date, pctmwords)) +
   geom_point(alpha=0.5) +
   geom_smooth(method= loess, alpha=0.25) +
@@ -309,15 +312,16 @@ With the `quanteda` package we first need to create a "corpus" object, by declar
 
 ```{r}
 
-tweets$date <- as.Date(tweets$created_at)
+tweets$date <- as.Date(tweets$created_at)   #通过添加一个名为data的新列来修改数据 tweets 框，将该 created_at 列转换为 Date 格式并将其分配给 date
 
-tweet_corpus <- corpus(tweets, text_field = "tweet", docvars = "date")
+tweet_corpus <- corpus(tweets, text_field = "tweet", docvars = "date")  #此函数从 tweets 数据框创建语料库对象。该text_field参数指定数据框中包含每个文档（推文）文本的列，在本例中为“推文”列。该docvars参数指定要包含在语料库中的文档级变量。在本例中，它包含数据框中的 tweets “date”变量。
 ```
 
 
 We then tokenize our text using the `tokens()` function from quanteda, removing punctuation along the way:
 ```{r}
-toks_news <- tokens(tweet_corpus, remove_punct = TRUE)
+toks_news <- tokens(tweet_corpus, remove_punct = TRUE) 
+#使用 quanteda 中的 tokens() 函数对文本进行标记化，并在此过程中删除标点符号：
 
 ```
 
@@ -325,9 +329,9 @@ We then take the `data_dictionary_LSD2015` that comes bundled with `quanteda` an
 
 ```{r}
 # select only the "negative" and "positive" categories
-data_dictionary_LSD2015_pos_neg <- data_dictionary_LSD2015[1:2]
+data_dictionary_LSD2015_pos_neg <- data_dictionary_LSD2015[1:2] #此行创建仅包含前两列 data_dictionary_LSD2015 的数据框子集。据推测，这些列代表字典中的正面和负面单词。
 
-toks_news_lsd <- tokens_lookup(toks_news, dictionary = data_dictionary_LSD2015_pos_neg)
+toks_news_lsd <- tokens_lookup(toks_news, dictionary = data_dictionary_LSD2015_pos_neg)  #此行使用该 tokens_lookup() 函数将 toks_news 对象（可能是新闻文章语料库）中的标记与 data_dictionary_LSD2015_pos_neg 字典进行匹配。此函数将对语料库中的每个标记进行注释，并提供有关它是在字典的正面还是负面部分中找到的信息
 ```
 
 This creates a long list of all the texts (tweets) annotated with a series of 'positive' or 'negative' annotations depending on the valence of the words in that text. The creators of `quanteda` then recommend we generate a document feature matric from this. Grouping by date, we then get a dfm object, which is a quite convoluted list object that we can plot using base graphics functions for plotting matrices.
@@ -335,20 +339,20 @@ This creates a long list of all the texts (tweets) annotated with a series of 'p
 ```{r}
 # create a document document-feature matrix and group it by date
 dfmat_news_lsd <- dfm(toks_news_lsd) %>% 
-  dfm_group(groups = date)
+  dfm_group(groups = date)  #从带有正价和负价标签 （ toks_news_lsd ） 的标记创建文档特征矩阵 （dfm），然后按日期对其进行分组。
 
 # plot positive and negative valence over time
 matplot(dfmat_news_lsd$date, dfmat_news_lsd, type = "l", lty = 1, col = 1:2,
-        ylab = "Frequency", xlab = "")
-grid()
-legend("topleft", col = 1:2, legend = colnames(dfmat_news_lsd), lty = 1, bg = "white")
+        ylab = "Frequency", xlab = "")  #使用matplot()该函数绘制正价词和负价词随时间变化的频率。该type="l"参数指定折线图，将折线类型设置为实线，lty=1并为col=1:2正线和负线指定不同的颜色。y 轴标签设置为“频率”，x 轴标签留空。
+grid()  #向绘图添加网格
+legend("topleft", col = 1:2, legend = colnames(dfmat_news_lsd), lty = 1, bg = "white")  #在绘图中添加一个图例，指示哪种颜色对应于正线和负线。
 
 # plot overall sentiment (positive  - negative) over time
 
 plot(dfmat_news_lsd$date, dfmat_news_lsd[,"positive"] - dfmat_news_lsd[,"negative"], 
-     type = "l", ylab = "Sentiment", xlab = "")
+     type = "l", ylab = "Sentiment", xlab = "") #使用 plot() 函数绘制一段时间内的整体情绪（正面 - 负面）。y 轴标签设置为“情绪”，x 轴标签留空。
 grid()
-abline(h = 0, lty = 2)
+abline(h = 0, lty = 2)  #这将在 y = 0 处添加一条水平线以表示中性情绪水平
 
 ```
 
@@ -381,7 +385,104 @@ tidy_sent %>%
 ## Exercises
 
 1. Take a subset of the tweets data by "user_name" These names describe the name of the newspaper source of the Twitter account. Do we see different sentiment dynamics if we look only at different newspaper sources?
+
+```{r}
+newspaper_subset <- tweets %>%
+  filter(username %in% c("TheSun", "DailyMailUK", "MetroUK", "DailyMirror", 
+                           "EveningStandard", "thetimes", "Telegraph", "guardian"))
+
+sentiment_analysis <- newspaper_subset %>%
+  mutate(desc = tolower(tweet)) %>%
+  unnest_tokens(word, desc) %>%
+  filter(str_detect(word, "[a-z]")) %>%
+  filter(!word %in% stop_words$word)
+
+sentiment_analysis$date <- as.Date(sentiment_analysis$created_at)
+
+sentiment_analysis <- sentiment_analysis %>%
+  arrange(date)
+
+sentiment_analysis$order <- 1:nrow(sentiment_analysis)
+  
+sentiment_analysis_nrc <- sentiment_analysis %>%
+  inner_join(get_sentiments("nrc")) %>%
+  count(username, date, index = order %/% 1000, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+sentiment_analysis_nrc_plot <- sentiment_analysis_nrc %>%
+  ggplot(aes(date, sentiment, color = username)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = loess, alpha = 0.25) +
+  ylab("nrc sentiment")
+
+sentiment_analysis_nrc_plot
+```
+
 2. Build your own (minimal) dictionary-based filter technique and plot the result
+
+```{r}
+word <- c('movie', 'game', 'art', 'sport', 'cook',
+             'reading', 'book', 'cooking', 'baking', 'swimming')
+value <- c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+funny <- data.frame(word, value)
+funny
+
+tidy_tweets %>%
+  inner_join(funny) %>%
+  group_by(date, index = order %/% 1000) %>% 
+  summarise(funwords = sum(value)) %>% 
+  ggplot(aes(date, funwords)) +
+  geom_bar(stat= "identity") +
+  ylab("funny words")
+
+
+```
+```{r}
+funny <- c('movie', 'game', 'art', 'sport', 'cook',
+             'reading', 'book', 'cooking', 'baking', 'swimming')
+
+totals_fun <- tidy_tweets %>%
+  mutate(obs=1) %>%
+  group_by(date) %>%
+  summarise(sum_words = sum(obs))
+
+tidy_tweets %>%
+  mutate(obs=1) %>%
+  filter(grepl(paste0(funny, collapse = "|"),word, ignore.case = T)) %>%
+  group_by(date) %>%
+  summarise(sum_fwords = sum(obs)) %>%
+  full_join(totals_fun, word, by="date") %>%
+  mutate(sum_fwords= ifelse(is.na(sum_fwords), 0, sum_fwords),
+         pctfwords = sum_fwords/sum_fwords) %>%
+  ggplot(aes(date, pctfwords)) +
+  geom_point(alpha=0.5) +
+  geom_smooth(method= loess, alpha=0.25) +
+  xlab("Date") + ylab("% funny words")
+
+```
+
 3. Apply the Lexicoder Sentiment Dictionary to the news tweets, but break down the analysis by newspaper
+```{r}
+tweets$date <- as.Date(tweets$created_at)
+
+tweet_corpus <- corpus(tweets, text_field = "tweet", docvars = c("date", "newspaper"))
+
+toks_news <- tokens(tweet_corpus, remove_punct = TRUE)
+
+data_dictionary_LSD2015_pos_neg <- data_dictionary_LSD2015[1:2]
+
+toks_news_lsd <- tokens_lookup(toks_news, dictionary = data_dictionary_LSD2015_pos_neg)
+
+dfmat_news_lsd <- dfm(toks_news_lsd) %>% 
+  dfm_group(groups = c("date", "newspaper"))
+
+# plot positive and negative valence over time
+matplot(dfmat_news_lsd$date, dfmat_news_lsd, type = "l", lty = 1, col = 1:2,
+        ylab = "Frequency", xlab = "")
+grid()
+legend("topleft", col = 1:2, legend = colnames(dfmat_news_lsd), lty = 1, bg = "white")
+```
+
 4. Don't forget to 'knit' to produce your final html output for the exercise.
 
