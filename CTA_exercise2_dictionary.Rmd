@@ -381,7 +381,99 @@ tidy_sent %>%
 ## Exercises
 
 1. Take a subset of the tweets data by "user_name" These names describe the name of the newspaper source of the Twitter account. Do we see different sentiment dynamics if we look only at different newspaper sources?
+```{r}
+newspaper_subset <- tweets %>%
+  filter(username %in% c("TheSun", "DailyMailUK", "MetroUK", "DailyMirror", 
+                           "EveningStandard", "thetimes", "Telegraph", "guardian"))
+
+sentiment_analysis <- newspaper_subset %>%
+  mutate(desc = tolower(tweet)) %>%
+  unnest_tokens(word, desc) %>%
+  filter(str_detect(word, "[a-z]")) %>%
+  filter(!word %in% stop_words$word)
+
+sentiment_analysis$date <- as.Date(sentiment_analysis$created_at)
+
+sentiment_analysis <- sentiment_analysis %>%
+  arrange(date)
+
+sentiment_analysis$order <- 1:nrow(sentiment_analysis)
+  
+sentiment_analysis_nrc <- sentiment_analysis %>%
+  inner_join(get_sentiments("nrc")) %>%
+  count(username, date, index = order %/% 1000, sentiment) %>%
+  spread(sentiment, n, fill = 0) %>%
+  mutate(sentiment = positive - negative)
+
+sentiment_analysis_nrc_plot <- sentiment_analysis_nrc %>%
+  ggplot(aes(date, sentiment, color = username)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = loess, alpha = 0.25) +
+  ylab("nrc sentiment")
+sentiment_analysis_nrc_plot
+```
 2. Build your own (minimal) dictionary-based filter technique and plot the result
+
+```{r}
+word <- c('movie', 'game', 'art', 'sport', 'cook',
+             'reading', 'book', 'cooking', 'baking', 'swimming')
+value <- c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
+funny <- data.frame(word, value)
+funny
+
+tidy_tweets %>%
+  inner_join(funny) %>%
+  group_by(date, index = order %/% 1000) %>% 
+  summarise(funwords = sum(value)) %>% 
+  ggplot(aes(date, funwords)) +
+  geom_bar(stat= "identity") +
+  ylab("funny words")
+
+```{r}
+funny <- c('movie', 'game', 'art', 'sport', 'cook',
+             'reading', 'book', 'cooking', 'baking', 'swimming')
+
+totals_fun <- tidy_tweets %>%
+  mutate(obs=1) %>%
+  group_by(date) %>%
+  summarise(sum_words = sum(obs))
+
+tidy_tweets %>%
+  mutate(obs=1) %>%
+  filter(grepl(paste0(funny, collapse = "|"),word, ignore.case = T)) %>%
+  group_by(date) %>%
+  summarise(sum_fwords = sum(obs)) %>%
+  full_join(totals_fun, word, by="date") %>%
+  mutate(sum_fwords= ifelse(is.na(sum_fwords), 0, sum_fwords),
+         pctfwords = sum_fwords/sum_fwords) %>%
+  ggplot(aes(date, pctfwords)) +
+  geom_point(alpha=0.5) +
+  geom_smooth(method= loess, alpha=0.25) +
+  xlab("Date") + ylab("% funny words")
+
+```
 3. Apply the Lexicoder Sentiment Dictionary to the news tweets, but break down the analysis by newspaper
+```{r}
+tweets$date <- as.Date(tweets$created_at)
+tweet_corpusnews <- corpus(tweets, text_field = "tweet", docvars = c("date", "newspaper"))
+
+toks_news1 <- tokens(tweet_corpusnews, remove_punct = TRUE)
+
+data_dictionary_LSD2015_pos_neg1 <- data_dictionary_LSDyes2015[1:2]
+toks_news_lsd1 <- tokens_lookup(toks_news1, dictionary = data_dictionary_LSD2015_pos_neg1)
+
+dfmat_news_lsd1 <- dfm(toks_news_lsd1) %>% 
+  dfm_group(groups = c("date", "newspaper"))
+
+# create a document document-feature matrix and group it by date
+dfmat_news_lsd1 <- dfm(toks_news_lsd1) %>% 
+  dfm_group(groups = date)
+
+# plot positive and negative valence over time
+matplot(dfmat_news_lsd1$date, dfmat_news_lsd1, type = "l", lty = 1, col = 1:2,
+        ylab = "Frequency", xlab = "")
+grid()
+legend("topleft", col = 1:2, legend = colnames(dfmat_news_lsd), lty = 1, bg = "white")
+```
 4. Don't forget to 'knit' to produce your final html output for the exercise.
 
